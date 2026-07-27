@@ -1111,14 +1111,15 @@ def _handle_connection_error(
 ):
     """Handle connection test errors with logging."""
     connection_desc = _get_connection_description(
+        connection_type, local_tsap, remote_tsap, rack, slot
+    )
+    
     _LOGGER.debug(
         "Connection test failed for %s:%s (%s): %s",
         host,
         port,
         connection_desc,
         type(err).__name__,
-    )
-        connection_type, local_tsap, remote_tsap, rack, slot
     )
 
     if isinstance(err, S7ConnectionError):

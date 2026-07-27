@@ -1111,6 +1111,13 @@ def _handle_connection_error(
 ):
     """Handle connection test errors with logging."""
     connection_desc = _get_connection_description(
+    _LOGGER.debug(
+        "Connection test failed for %s:%s (%s): %s",
+        host,
+        port,
+        connection_desc,
+        type(err).__name__,
+    )
         connection_type, local_tsap, remote_tsap, rack, slot
     )
 
@@ -1355,6 +1362,16 @@ async def _test_plc_connection(
     enable_metrics: bool,
 ) -> None:
     """Test PLC connection. Raises on failure."""
+    connection_desc = _get_connection_description(
+        connection_type, local_tsap, remote_tsap, rack, slot
+    )
+    _LOGGER.debug(
+        "Starting PLC connection test for %s:%s (%s) with pys7_connection_type=%s",  # noqa: E501
+        host,
+        port,
+        connection_desc,
+        pys7_connection_type,
+    )
     coordinator = S7Coordinator(
         hass,
         host=host,
@@ -1375,7 +1392,13 @@ async def _test_plc_connection(
         enable_metrics=enable_metrics,
     )
     await coordinator.connect()
+    _LOGGER.debug(
+        "PLC connection test connected to %s:%s (%s)", host, port, connection_desc
+    )
     await coordinator.disconnect()
+    _LOGGER.debug(
+        "PLC connection test disconnected from %s:%s (%s)", host, port, connection_desc
+    )
 
 
 def _build_connection_entry_data(
@@ -1446,6 +1469,7 @@ class S7PLCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Handle the initial step - choose connection type."""
+        _LOGGER.debug("async_step_user called with user_input=%s", user_input)
         if user_input is None:
             return self.async_show_form(
                 step_id="user",
@@ -1481,6 +1505,7 @@ class S7PLCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_rack_slot(self, user_input: dict[str, Any] | None = None):
         """Handle rack/slot connection configuration."""
+        _LOGGER.debug("async_step_rack_slot called with user_input=%s", user_input)
         errors: dict[str, str] = {}
 
         discovered_hosts = await self._async_get_discovered_hosts()
@@ -1568,6 +1593,7 @@ class S7PLCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_tsap(self, user_input: dict[str, Any] | None = None):
         """Handle TSAP connection configuration."""
+        _LOGGER.debug("async_step_tsap called with user_input=%s", user_input)
         errors: dict[str, str] = {}
 
         discovered_hosts = await self._async_get_discovered_hosts()
@@ -1669,6 +1695,18 @@ class S7PLCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 defaults=parse_defaults,
             )
             name = user_input.get(CONF_NAME, "S7 PLC")
+
+            _LOGGER.debug(
+                "Validating connection for host=%s, connection_type=%s, port=%s, rack=%s, slot=%s, local_tsap=%s, remote_tsap=%s, pys7_type=%s",
+                host,
+                connection_type,
+                params.port,
+                params.rack,
+                params.slot,
+                params.local_tsap,
+                params.remote_tsap,
+                params.pys7_connection_type,
+            )
 
         except (KeyError, ValueError):
             errors["base"] = "cannot_connect"
@@ -3207,6 +3245,7 @@ class S7PLCOptionsFlow(config_entries.OptionsFlow):
         self._edit_target = None
 
     async def async_step_connection(self, user_input: dict[str, Any] | None = None):
+        _LOGGER.debug("options async_step_connection called with user_input=%s", user_input)
         errors: dict[str, str] = {}
 
         data = self._config_entry.data
@@ -3448,6 +3487,7 @@ class S7PLCOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ):
         """Redirect to connection step."""
+        _LOGGER.debug("async_step_setup_connection called with user_input=%s", user_input)
         return await self.async_step_connection(user_input)
 
     # ====== STEP: setup entities (submenu) ======
